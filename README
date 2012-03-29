@@ -1,0 +1,16 @@
+sqlpermcalc
+===========
+
+Tool to create database users that have only the minimum permissions required
+to do their job. Currently still in early development.
+
+Usage:
+./sqlpermcalc.py <sql_filename>
+
+Dependencies:
+
+python-sqlparse library:
+https://code.google.com/p/python-sqlparse/
+
+Please direct questions/comments to:
+Dan Cornell - dan _at_ denimgroup.com
