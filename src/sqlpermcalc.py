@@ -253,6 +253,7 @@ def parse_column_names_insert(sql_part):
 
 def handle_insert(sql_line, model):
 	logging.debug("Parse INSERT for |%s|", sql_line)
+	analyze_parsed_sql(sql_line)
 	insert_target = sql_line.tokens[4]
 	table_name = str(insert_target.tokens[0])
 	column_names = parse_column_names_insert(insert_target.tokens[2])
