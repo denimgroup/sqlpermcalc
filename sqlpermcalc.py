@@ -12,7 +12,17 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def merge_map(main_map, table_name, column_list):
-	logging.debug("Adding table %s with columns %s to map with existing keys %s", table_name, ",".join(column_list), ",".join(main_map.keys()))
+	"""Merge a new set of columns for a table into an existing set of permissions.
+
+	Keyword arguments:
+	main_map -- the map into which the new permissions will be merged
+	table_name -- string name for the table permissions apply to
+	column_list -- list of strings for the columns
+
+	"""
+	logging.debug("Adding table %s with columns %s to map with existing keys %s", \
+						table_name, ",".join(column_list), ",".join(main_map.keys()))
+
 	if table_name in main_map:
 		logging.debug("Already have a map for table %s. Adding to it", table_name)
 		table_map = main_map[table_name]
@@ -36,20 +46,48 @@ class PermissionsModel():
 	# made more sophisticated because a single SELECT statement could indicate the need
 	# for SELECT permissions to a number of tables and columns within those tables
 	def merge_select(self, table_name, column_list):
+		"""Merge new SELECT permissions.
+
+		Keyword arguments:
+		table_name -- string name for the table that will get additional permissions
+		column_list -- list of string names for the columns the permisisons apply to
+
+		"""
 		merge_map(self.SELECT_MAP, table_name, column_list)
 
 	def merge_update(self, table_name, column_list):
+		"""Merge new UPDATE permissions.
+
+		Keyword arguments:
+		table_name -- string name for the table that will get additional permissions
+		column_list -- list of string names for the columns the permisisons apply to
+
+		"""
 		merge_map(self.UPDATE_MAP, table_name, column_list)
 
 
 	def merge_insert(self, table_name, column_list):
+		"""Merge new INSERT permissions.
+
+		Keyword arguments:
+		table_name -- string name for the table that will get additional permissions
+		column_list -- list of string names for the columns the permisisons apply to
+
+		"""
 		merge_map(self.INSERT_MAP, table_name, column_list)
 		
 
 	def merge_delete(self, table_name):
+		"""Merge new DELETE permissions.
+
+		Keyword arguments:
+		table_name -- string name for the table that will get additional permissions
+
+		"""
 		self.DELETE_MAP[table_name] = 1
 
 	def print_stuff(self):
+		"""Print a list of all the permissions in the PermissionModel in a human-readable format."""
 		logging.debug('Database permission model')
 		logging.debug("DELETE: %s", ",".join(self.DELETE_MAP.keys()))
 		for table_name in self.INSERT_MAP.keys():
@@ -86,10 +124,12 @@ def extract_all_identifiers(identifier_stuff):
 			logging.debug("Extracting identifiers for list item %s", item)
 			result.extend(extract_all_identifiers(item))
 	elif isinstance(identifier_stuff, IdentifierList):
-		logging.debug("Found an IdentifierList: %s. Going to break into a list and process", identifier_stuff)
+		logging.debug("Found an IdentifierList: %s. Going to break into a list and process", \
+						identifier_stuff)
 		result.extend(extract_all_identifiers(identifier_stuff.get_identifiers()))
 	elif isinstance(identifier_stuff, Identifier) or identifier_stuff.ttype is Keyword:
-		logging.debug("Found an Identifier: %s. Adding to result list: |%s|", identifier_stuff, identifier_stuff)
+		logging.debug("Found an Identifier: %s. Adding to result list: |%s|", \
+							identifier_stuff, identifier_stuff)
 		result.append(str(identifier_stuff))
 	else:
 		logging.debug("Ignoring item %s of type %s", identifier_stuff, type(identifier_stuff))
