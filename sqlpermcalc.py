@@ -37,9 +37,36 @@ def merge_map(main_map, table_name, column_list):
 
 class PermissionsModel():
 	SELECT_MAP = { }
+	"""Map containing SELECT permissions
+
+	This map has string keys representing table names that point to maps. The inner maps
+	contain string keys representing column names that point to a constant (1) simply
+	to indicate the presence of that permission for the column.
+
+	"""
 	INSERT_MAP = { }
+	"""Map containing INSERT permissions
+
+	This map has string keys representing table names that point to maps. The inner maps
+	contain string keys representing column names that point to a constant (1) simply
+	to indicate the presence of that permission for the column.
+
+	"""
 	DELETE_MAP = { }
+	"""Map containing DELETE permissions
+
+	This map has string keys representing table names that point to a constant (1) simply
+	to indicate the presence of that permission for the table.
+
+	"""
 	UPDATE_MAP = { }
+	"""Map containing SELECT permissions
+
+	This map has string keys representing table names that point to maps. The inner maps
+	contain string keys representing column names that point to a constant (1) simply
+	to indicate the presence of that permission for the column.
+
+	"""
 
 
 	# TOFIX - This method signature will need to be updated as the SELECT handling is
@@ -236,6 +263,13 @@ def handle_insert(sql_line, model):
 
 
 def handle_line(line, model):
+	"""Take a SQL statement in a string and add the appropriate permissions to the model.
+
+	Keyword arguments:
+	line -- string containing a single SQL statement
+	model -- PermissionsModel containing the current set of permissions
+
+	"""
 	logging.debug("Going to handle line |%s|", line)
 
 	sql_line = sqlparse.parse(line)[0]
