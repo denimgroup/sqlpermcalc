@@ -262,16 +262,7 @@ def handle_select(sql_line, model):
 
 def parse_column_names_insert(sql_part):
 	logging.debug("Parsing column names from |%s|", sql_part)
-	analyze_parsed_sql(sql_part)
-	# result = []
-	# for token in sql_part.tokens:
-	#	# logging.debug("Token |%s| is of type |%s|", token, type(token))
-	#	if isinstance(token, Identifier):
-	#		# logging.debug("Found an Identifier: |%s|", token)
-	#		result.append(str(token))
-
 	result = extract_all_identifiers(sql_part)
-
 	return result
 
 
