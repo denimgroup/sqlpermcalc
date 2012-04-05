@@ -4,18 +4,20 @@
 # http://www.denimgroup.com/
 # http://blog.denimgroup.com/
 
+export PATH=$PATH:/usr/local/mysql/bin
+
 # Stop Apache
 echo "Stopping Apache"
-sudo apache2ctl stop
+sudo apachectl stop
 
 # Flush MySQL logs
 echo "Flushing MySQL logs"
-mysqladmin --user=root --password=password flush-logs
+mysqladmin --user=root flush-logs
 
 # Turn on MySQL logging
 echo "Starting MySQL query logging"
-mysql --user=root --password=quickstart < start_logging.sql
+mysql --user=root < start_logging_mysql.sql
 
 # Start Apache
 echo "Starting Apache"
-sudo apache2ctl start
+sudo apachectl start
