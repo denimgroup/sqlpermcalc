@@ -2,9 +2,10 @@
 
 import logging
 import sqlparse
-from sqlparse.sql import Identifier, IdentifierList
-from sqlparse.tokens import Keyword, DML
+from sqlparse.sql import Identifier, IdentifierList, Parenthesis, Token, TokenList
+from sqlparse.tokens import Keyword, DML, Name
 import sys
+import traceback
 
 
 sqlparse_version = 0.1
@@ -23,6 +24,10 @@ def merge_map(main_map, table_name, column_list):
 	logging.debug("Adding table %s with columns %s to map with existing keys %s", \
 						table_name, ",".join(column_list), ",".join(main_map.keys()))
 
+	if len(column_list) == 0:
+		logging.error("Trying to merge permissions for table %s with no permissions. Going to raise Exception", table_name)
+		raise Exception("Trying to merge permissions for table %s with no permissions" % table_name)
+
 	if table_name in main_map:
 		logging.debug("Already have a map for table %s. Adding to it", table_name)
 		table_map = main_map[table_name]
@@ -33,6 +38,19 @@ def merge_map(main_map, table_name, column_list):
 
 	for column in column_list:
 		table_map[column] = 1
+
+
+def print_helper(table_map, permission_name):
+	if len(table_map) > 0:
+		# There are table permissions to display
+		tables = sorted(table_map.keys())
+		for table_name in tables:
+			column_map = table_map[table_name];
+			if '*' in column_map:
+				column_list = ('*')
+			else:
+				column_list = sorted(column_map.keys())
+			logging.debug("%s: Table: %s, Columns: %s", permission_name, table_name, ",".join(column_list))
 
 
 class PermissionsModel():
@@ -113,53 +131,56 @@ class PermissionsModel():
 		"""
 		self.DELETE_MAP[table_name] = 1
 
+
+
+
 	def print_stuff(self):
 		"""Print a list of all the permissions in the PermissionModel in a human-readable format."""
 		logging.debug('Database permission model')
-		logging.debug("DELETE: %s", ",".join(self.DELETE_MAP.keys()))
-		for table_name in self.INSERT_MAP.keys():
-			column_map = self.INSERT_MAP[table_name]
-			logging.debug("INSERT: Table: %s, Columns: %s", table_name, ",".join(column_map.keys()))
-		for table_name in self.UPDATE_MAP.keys():
-			column_map = self.UPDATE_MAP[table_name]
-			logging.debug("UPDATE: Table: %s, Columns: %s", table_name, ",".join(column_map.keys()))
-		for table_name in self.SELECT_MAP.keys():
-			column_map = self.SELECT_MAP[table_name]
-			logging.debug("SELECT: Table: %s, Columns: %s", table_name, ",".join(column_map.keys()))
+		if len(self.DELETE_MAP.keys()) > 0:
+			logging.debug("DELETE: %s", ",".join(sorted(self.DELETE_MAP.keys())))
+
+		print_helper(self.INSERT_MAP, "INSERT")
+		print_helper(self.UPDATE_MAP, "UPDATE")
+		print_helper(self.SELECT_MAP, "SELECT")
+
+
 
 	def __init__(self):
 		self.data = []
 
 
 def analyze_parsed_sql(sql_line):
-	logging.debug(">>>> SQL fragment |%s|", sql_line)
+	logging.debug(">>>> SQL fragment |%s| is of type |%s| and ttype |%s|", sql_line, type(sql_line), sql_line.ttype)
 	logging.debug(">>>> Token count: %d", len(sql_line.tokens))
 	i = 0
 	for token in sql_line.tokens:
-		logging.debug(">>>> Token[%d]: |%s| is of type |%s|", i, token, type(token))
+		logging.debug(">>>> Token[%d]: |%s| is of type |%s| and ttype |%s|", i, token, type(token), token.ttype)
 		i = i + 1
 
 def extract_all_identifiers(identifier_stuff):
 	logging.debug("Extracting identifiers from %s", identifier_stuff)
 	result = []
-	# When checking for Identifiers you also have to check for Keywords because of a bug
+	# When checking for Identifiers you also have to check for Keywords and Builtins because of a bug
 	# in the parsing library that treats Identifiers with names that match Keywords as
-	# Keywords
+	# Keywords (ditto Builtins)
 	if isinstance(identifier_stuff, list):
 		logging.debug("Found a list: %s", identifier_stuff)
 		for item in identifier_stuff:
 			logging.debug("Extracting identifiers for list item %s", item)
 			result.extend(extract_all_identifiers(item))
-	elif isinstance(identifier_stuff, IdentifierList):
-		logging.debug("Found an IdentifierList: %s. Going to break into a list and process", \
-						identifier_stuff)
-		result.extend(extract_all_identifiers(identifier_stuff.get_identifiers()))
-	elif isinstance(identifier_stuff, Identifier) or identifier_stuff.ttype is Keyword:
+	elif isinstance(identifier_stuff, Identifier) or identifier_stuff.ttype is Keyword or identifier_stuff.ttype is Name.Builtin:
 		logging.debug("Found an Identifier: %s. Adding to result list: |%s|", \
 							identifier_stuff, identifier_stuff)
 		result.append(str(identifier_stuff))
+	# elif isinstance(identifier_stuff, IdentifierList):
+	elif isinstance(identifier_stuff, TokenList):
+		logging.debug("Found a TokenList: %s. Going to break into a list and process", \
+						identifier_stuff)
+		result.extend(extract_all_identifiers(identifier_stuff.tokens))
 	else:
-		logging.debug("Ignoring item %s of type %s", identifier_stuff, type(identifier_stuff))
+		logging.debug("Ignoring item %s of type %s and ttype %s",
+						identifier_stuff, type(identifier_stuff), identifier_stuff.ttype)
 
 	return result
 
@@ -240,23 +261,42 @@ def handle_select(sql_line, model):
 	model.merge_select(table_name, column_names)
 
 def parse_column_names_insert(sql_part):
-	# logging.debug("Parsing column names from |%s|", sql_part)
-	# analyze_parsed_sql(sql_part)
-	result = []
-	for token in sql_part.tokens:
-		# logging.debug("Token |%s| is of type |%s|", token, type(token))
-		if isinstance(token, Identifier):
-			# logging.debug("Found an Identifier: |%s|", token)
-			result.append(str(token))
+	logging.debug("Parsing column names from |%s|", sql_part)
+	analyze_parsed_sql(sql_part)
+	# result = []
+	# for token in sql_part.tokens:
+	#	# logging.debug("Token |%s| is of type |%s|", token, type(token))
+	#	if isinstance(token, Identifier):
+	#		# logging.debug("Found an Identifier: |%s|", token)
+	#		result.append(str(token))
+
+	result = extract_all_identifiers(sql_part)
+
 	return result
 
 
 def handle_insert(sql_line, model):
 	logging.debug("Parse INSERT for |%s|", sql_line)
 	analyze_parsed_sql(sql_line)
+
 	insert_target = sql_line.tokens[4]
-	table_name = str(insert_target.tokens[0])
-	column_names = parse_column_names_insert(insert_target.tokens[2])
+
+	logging.debug("insert_target is |%s|", insert_target)
+	analyze_parsed_sql(insert_target)
+
+	if isinstance(insert_target, Identifier):
+		table_name = str(insert_target)
+		column_names = ('*')
+	else:
+		table_name = str(insert_target.tokens[0])
+		# This is a bit of a hack, but deals with situations where there is no space in the query - ie:
+		# INSERT INTO MyTable(column1,column2,column3)VALUES(1,2,3)
+		if isinstance(insert_target.tokens[1], Parenthesis):
+			check_index = 1
+		else:
+			check_index = 2
+		column_names = parse_column_names_insert(insert_target.tokens[check_index])
+
 	logging.info("INSERT permission required for table |%s|", table_name)
 	logging.info("INSERT permissions required for columns |%s|", ",".join(column_names))
 
@@ -269,32 +309,43 @@ def handle_line(line, model):
 	Keyword arguments:
 	line -- string containing a single SQL statement
 	model -- PermissionsModel containing the current set of permissions
+	
+	Keyword return:
+	True if the line was processed correctly, False if an error occurred
 
 	"""
 	logging.debug("Going to handle line |%s|", line)
+	error_detected = False
 
-	sql_line = sqlparse.parse(line)[0]
-	stmt_type = sql_line.get_type()
-	logging.debug("Statement type is |%s|", stmt_type)
+	try:
+		sql_line = sqlparse.parse(line)[0]
+		stmt_type = sql_line.get_type()
+		logging.debug("Statement type is |%s|", stmt_type)
 
-	# analyze_parsed_sql(sql_line)
+		# analyze_parsed_sql(sql_line)
 
-	if stmt_type == 'INSERT':
-		handle_insert(sql_line, model)
-	elif stmt_type == 'SELECT':
-		handle_select(sql_line, model)
-	elif stmt_type == 'DELETE':
-		handle_delete(sql_line, model)
-	elif stmt_type == 'UPDATE':
-		handle_update(sql_line, model)
+		if stmt_type == 'INSERT':
+			handle_insert(sql_line, model)
+		elif stmt_type == 'SELECT':
+			handle_select(sql_line, model)
+		elif stmt_type == 'DELETE':
+			handle_delete(sql_line, model)
+		elif stmt_type == 'UPDATE':
+			handle_update(sql_line, model)
+	except Exception as inst:
+		error_detected = True
+		logging.error("Error parsing line |%s|", line)
+		logging.error("Error type is |%s|", type(inst))
+		logging.error("Error args are |%s|", inst.args)
+		logging.error("Error string representation: |%s|", str(inst))
+		traceback.print_exc()
+
+	return (not error_detected)
 
 def main():
 	logging.info('Starting sqlparse version %s', sqlparse_version)
 
 	# Open input file and setup permission model
-
-	# TOFIX - Create permission model objects
-	# TODO - Add exception/error handling
 
 	if len(sys.argv) < 2:
 		logging.error('No SQL file specified.')
@@ -309,9 +360,17 @@ def main():
 
 	the_model = PermissionsModel()
 
+	lines_attempted = 0
+	errors = 0
+
 	for line in sql_file:
 		line = line.rstrip()
-		handle_line(line, the_model)
+		lines_attempted = lines_attempted + 1
+		status = handle_line(line, the_model)
+		if not status:
+			errors = errors + 1
+
+	logging.info("%d errors from %d lines processed", errors, lines_attempted)
 
 	# Print out permission model
 
