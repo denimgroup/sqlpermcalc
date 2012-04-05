@@ -17,7 +17,7 @@
 
 	include 'includes/db_connection.php';
 
-	$query = "SELECT * FROM CommerceOrder WHERE id = " . $order_id;
+	$query = "SELECT order_date, tax, shipping, order_status FROM CommerceOrder WHERE id = " . $order_id;
 	// echo($query . "<br />");
 
 	$result = mysql_query($query);

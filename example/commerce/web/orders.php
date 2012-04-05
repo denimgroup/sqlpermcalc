@@ -23,7 +23,7 @@
 <?php
 		include 'includes/db_connection.php';
 
-		$query = "SELECT * FROM CommerceOrder WHERE user_id = " . $user_id;
+		$query = "SELECT id, order_date, order_status FROM CommerceOrder WHERE user_id = " . $user_id;
 
 		// echo($query . "<br />");
 

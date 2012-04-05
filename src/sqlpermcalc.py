@@ -2,7 +2,7 @@
 
 import logging
 import sqlparse
-from sqlparse.sql import Identifier, IdentifierList, Parenthesis, Token, TokenList
+from sqlparse.sql import Identifier, IdentifierList, Parenthesis, Token, TokenList, Where
 from sqlparse.tokens import Keyword, DML, Name, Wildcard
 import sys
 import traceback
@@ -197,6 +197,7 @@ def find_the_identifiers_in_list(sql_part):
 	return result
 
 
+
 def find_the_identifiers(sql_part):
 	# logging.debug("sql_part is of type %s", type(sql_part))
 	result = []
@@ -209,6 +210,42 @@ def find_the_identifiers(sql_part):
 			# logging.debug("Found an IdentifierList: |%s|", token)
 			result.extend(find_the_identifiers_in_list(token))
 	return result
+
+
+
+def remove_string_from_list_ignore_case(the_list, string_to_remove):
+	index = 0
+	for list_item in the_list:
+		if list_item.lower() == string_to_remove.lower():
+			del the_list[index]
+			# Decrement because we're going to increment in just a second and we need to stay in the same place
+			index = index - 1
+		index = index + 1
+			
+
+
+def parse_column_names_where(where_clause):
+	"""Retrieve column names used in a WHERE clause
+
+	Keyword arguments:
+	where_clause --- Instance of sqlparse.sql.Where we will extract column names from
+
+	Keyword return:
+	List of strings containing column names found in the WHERE clause
+
+	"""
+	logging.debug("Parsing column names from WHERE clause |%s|", where_clause)
+	analyze_parsed_sql(where_clause)
+	# Strip off the first token because it is a WHERE token which is a keyword that would be flagged by
+	# extract_all_identifiers
+	tokens = where_clause.tokens
+	tokens = tokens[1:]
+	column_names = extract_all_identifiers(tokens)
+	logging.debug("Column names found in WHERE clause |%s| were |%s|", where_clause, ",".join(column_names))
+	# Need to clean out ANDs and ORs
+	remove_string_from_list_ignore_case(column_names, "AND")
+	remove_string_from_list_ignore_case(column_names, "OR")
+	return column_names
 
 
 def parse_column_names_update(sql_part):
@@ -251,9 +288,8 @@ def handle_select(sql_line, model):
 			break;
 		from_index = from_index + 1
 	if not from_found:
-		logging.info("Bad SELECT statement. No FROM found in %s", sql_line)
-		# TODO - Better error handling
-		return
+		logging.error("Bad SELECT statement. No FROM found in %s", sql_line)
+		raise Exception("Bad SELECT statement. No FROM found in %s" % sql_line)
 
 	column_tokens = sql_line.tokens[2:from_index-1]
 	column_names = extract_all_identifiers(column_tokens)
@@ -261,6 +297,14 @@ def handle_select(sql_line, model):
 	table_name = str(sql_line.tokens[from_index+2])
 	logging.info("SELECT permission required for table |%s|", table_name)
 	logging.info("SELECT permissions required for columns |%s|", ",".join(column_names))
+
+	# Also need to check the WHERE clause for additional SELECT column privs
+	tokens_after_from = sql_line.tokens[from_index:]
+	for token in tokens_after_from:
+		if isinstance(token, Where):
+			# Found our WHERE - pull the columns required
+			where_column_names = parse_column_names_where(token)
+			model.merge_select(table_name, where_column_names)
 	
 	model.merge_select(table_name, column_names)
 
