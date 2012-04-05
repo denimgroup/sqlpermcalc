@@ -3,7 +3,7 @@
 import logging
 import sqlparse
 from sqlparse.sql import Identifier, IdentifierList, Parenthesis, Token, TokenList
-from sqlparse.tokens import Keyword, DML, Name
+from sqlparse.tokens import Keyword, DML, Name, Wildcard
 import sys
 import traceback
 
@@ -169,6 +169,10 @@ def extract_all_identifiers(identifier_stuff):
 		for item in identifier_stuff:
 			logging.debug("Extracting identifiers for list item %s", item)
 			result.extend(extract_all_identifiers(item))
+	elif identifier_stuff.ttype is Wildcard:
+		logging.debug("Found a Wildcard: %s. Adding to result list: |%s|", \
+							identifier_stuff, identifier_stuff)
+		result.append('*')
 	elif isinstance(identifier_stuff, Identifier) or identifier_stuff.ttype is Keyword or identifier_stuff.ttype is Name.Builtin:
 		logging.debug("Found an Identifier: %s. Adding to result list: |%s|", \
 							identifier_stuff, identifier_stuff)
