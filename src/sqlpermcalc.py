@@ -132,6 +132,75 @@ class PermissionsModel():
 		self.DELETE_MAP[table_name] = 1
 
 
+	def generate_mysql_permissions_column(self, database_name, user_name, host_name, table_map, permission_name):
+		logging.debug("Generating MySQL permissions based on table map for %s permission", permission_name)
+		result = []
+		if len(table_map) > 0:
+			# There are table permissions to generate
+			tables = sorted(table_map.keys())
+			for table_name in tables:
+				column_map = table_map[table_name];
+				if '*' in column_map:
+					# All columns allowed - can give table-level permissions
+					result.append("GRANT %s ON %s.%s TO '%s'@'%s';" % \
+							(permission_name, database_name, table_name, user_name, host_name))
+				else:
+					column_list = sorted(column_map.keys())
+					result.append("GRANT %s (%s) ON %s.%s TO '%s'@'%s';" %	\
+							(permission_name, ','.join(column_list), database_name, table_name, user_name, host_name))
+
+		return result
+
+	def generate_mysql_permissions_insert(self, database_name, user_name, host_name):
+		result = self.generate_mysql_permissions_column(database_name, user_name, host_name, self.INSERT_MAP, "INSERT")
+		return result
+		
+
+
+	def generate_mysql_permissions_select(self, database_name, user_name, host_name):
+		result = self.generate_mysql_permissions_column(database_name, user_name, host_name, self.SELECT_MAP, "SELECT")
+		return result
+		
+
+	def generate_mysql_permissions_update(self, database_name, user_name, host_name):
+		result = self.generate_mysql_permissions_column(database_name, user_name, host_name, self.UPDATE_MAP, "UPDATE")
+		return result
+		
+
+	def generate_mysql_permissions_delete(self, database_name, user_name, host_name):
+		logging.debug("Generating MySQL permissions for DELETEs")
+		result = []
+		tables = sorted(self.DELETE_MAP.keys())
+		if len(tables) > 0:
+			for table in tables:
+				result.append("GRANT DELETE ON %s.%s TO '%s'@'%s';" % (table, database_name, user_name, host_name))
+		else:
+			logging.debug("No DELETE permissions to generate")
+
+		return result
+
+
+	def generate_mysql_permissions(self, database_name, user_name, host_name):
+		"""Generate a list of MySQL GRANT statements to reflect the permissions in the model
+
+		Keyword arguments:
+		database_name --- string name for the database where the permissions will be granted
+		user_name --- string name for the user to receive the permissions
+		host_name --- string name for the host where the user should receive the permissions
+
+		Keyword return:
+		list of strings containing the GRANT statements
+
+		"""
+		logging.debug("Generating MySQL permissions")
+		result = []
+		result.extend(self.generate_mysql_permissions_delete(database_name, user_name, host_name))
+		result.extend(self.generate_mysql_permissions_insert(database_name, user_name, host_name))
+		result.extend(self.generate_mysql_permissions_select(database_name, user_name, host_name))
+		result.extend(self.generate_mysql_permissions_update(database_name, user_name, host_name))
+
+		return result 
+
 
 
 	def print_stuff(self):
@@ -415,7 +484,10 @@ def main():
 
 	the_model.print_stuff()
 
-	# TODO - Print out permission model
+	permission_list = the_model.generate_mysql_permissions("sqlpermcalc_commerce", "spc_publiclow", "localhost")
+	logging.info("Printing permissions")
+	for permission_string in permission_list:
+		print permission_string
 
 	logging.info('sqlparse finished')
 
