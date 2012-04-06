@@ -1,0 +1,47 @@
+sqlpermcalc Support Tools
+=========================
+
+Support tools for the use of sqlpermcalc:
+
+mysql_start_logging.sh
+----------------------
+Script to turn on logging for the local MySQL server. The logging is done to
+tables. This is less efficient than file logging, but is far easier to parse.
+Also just before logging is definitively enabled, existing logs are deleted so
+that when the logs are retrieved they only contain logs that occurred from the
+execution of this script onward. In addition, the Apache webserver is stopped
+before logging is turned on and restarted after logging has been enabled. This
+is to minimize (hopefully eliminate) any MySQL query activity for the target
+web database.
+
+Usage:
+% mysql_start_logging.sh
+
+
+mysql_stop_logging.sh
+---------------------
+Script to stop logging on the MySQL server. Query logging is typically
+considered bad for performance so it isn't something you would usually want to
+do on a production server long-term so this script turns off query logging.
+
+Usage:
+% mysql_stop_logging.sh
+
+
+mysql_get_logfile.sh
+--------------------
+Script to retrieve all log entries for a given user from the MySQL query log
+tables. You must supply a specific MySQL user account or you get a lot of
+extraneous junk returned. These entries will be dumped to a file called
+query_log_mysql.sql in the local directory.
+
+Usage:
+% mysql_get_logfile.sh <db_username>
+
+
+Please direct questions/comments to:
+Dan Cornell
+dan _at_ denimgroup.com
+@danielcornell
+
+
