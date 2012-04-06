@@ -1,6 +1,7 @@
 <?php
 
 	$username = "spc_default";	//	16 char username limit from MySQL
+	// $username = "spc_publiclow";	//	16 char username limit from MySQL
 	$password = "sqlpermcalc_default_password";
 	$database = "sqlpermcalc_commerce";
 
