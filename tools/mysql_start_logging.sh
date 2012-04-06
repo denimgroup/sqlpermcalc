@@ -10,13 +10,15 @@ export PATH=$PATH:/usr/local/mysql/bin
 echo "Stopping Apache"
 sudo apachectl stop
 
-# Flush MySQL logs
+# Flush and DELETE existing MySQL logs
 echo "Flushing MySQL logs"
 mysqladmin --user=root flush-logs
+mysql -e "TRUNCATE TABLE mysql.general_log" --user=root mysql
 
 # Turn on MySQL logging
 echo "Starting MySQL query logging"
-mysql --user=root < start_logging_mysql.sql
+mysql -e "SET GLOBAL log_output = 'TABLE'" --user=root mysql
+mysql -e "SET GLOBAL general_log = 'ON'" --user=root mysql
 
 # Start Apache
 echo "Starting Apache"
