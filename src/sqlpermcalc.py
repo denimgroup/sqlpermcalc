@@ -202,6 +202,45 @@ class PermissionsModel():
 		return result 
 
 
+	def get_insert_permissions(self):
+		return(self.INSERT_MAP)
+
+	def get_update_permissions(self):
+		return(self.UPDATE_MAP)
+
+	def get_select_permissions(self):
+		return(self.SELECT_MAP)
+
+	def get_delete_permissions(self):
+		return(self.DELETE_MAP)
+
+	def determine_added_deletes(self, external_delete_map):
+		added_delete_tables = []
+		for table_name in external_delete_map.keys():
+			logging.debug('Checking to see if DELETE table %s is new', table_name)
+			if not table_name in self.DELETE_MAP:
+				added_delete_tables.append(table_name)
+				logging.debug('Found new DELETE permission %s', table_name)
+		return added_delete_tables
+
+
+	def determine_added_permissions(self, permissions_model):
+		""" Calculate the permissions in the argument PermissionsModel that are not in our model
+
+		Keyword arguments:
+		permissions_model --- model containing a set of permissions
+
+		Keyword return:
+		PermissionsModel with any added permissions that were in the argument PermissionsModel but not in our model
+
+		"""
+		return_model = PermissionsModel()
+		added_delete_tables = self.determine_added_deletes(permissions_model.get_delete_permissions())
+		for table_name in added_delete_tables:
+			return_model.merge_delete(table_name)
+
+		return return_model
+
 
 	def print_stuff(self):
 		"""Print a list of all the permissions in the PermissionModel in a human-readable format."""
@@ -217,6 +256,10 @@ class PermissionsModel():
 
 	def __init__(self):
 		self.data = []
+		self.INSERT_MAP = {}
+		self.DELETE_MAP = {}
+		self.UPDATE_MAP = {}
+		self.SELECT_MAP = {}
 
 
 def analyze_parsed_sql(sql_line):
@@ -489,6 +532,22 @@ def main():
 	for permission_string in permission_list:
 		print permission_string
 
+	# Testing diff functionality
+	base_model = PermissionsModel()
+	base_model.merge_delete("Table1")
+	base_model.merge_delete("Table2")
+	base_model.merge_delete("Table3")
+	next_model = PermissionsModel()
+	next_model.merge_delete("Table2")
+	next_model.merge_delete("Table3")
+	next_model.merge_delete("Table4")
+	added_permissions_model = base_model.determine_added_permissions(next_model)
+
+	logging.info('Added permissions:')
+	added_permissions_model.print_stuff()
+
+
+	# Finished
 	logging.info('sqlparse finished')
 
 
