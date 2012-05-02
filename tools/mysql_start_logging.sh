@@ -6,6 +6,9 @@
 
 export PATH=$PATH:/usr/local/mysql/bin
 
+# We stop/start Apache so that the web application has to go through any
+# standard startup routines that might result in database queries.
+
 # Stop Apache
 echo "Stopping Apache"
 sudo apachectl stop
